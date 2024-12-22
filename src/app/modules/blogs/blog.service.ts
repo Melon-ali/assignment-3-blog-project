@@ -1,90 +1,117 @@
 import httpStatus from 'http-status';
-import { TBlog } from './blog.interface';
-import User from '../users/user.model';
 import AppError from '../../errors/AppError';
-import Blog from './blog.model';
+import { IBlog } from './blog.interface';
+import { Blog } from './blog.model';
+import jwt, { JwtPayload } from 'jsonwebtoken';
+import config from '../../config';
 import QueryBuilder from '../../builder/QueryBuilder';
-import mongoose from 'mongoose';
+import { blogsSearchableFields } from './blog.constant';
 
-//Create Blog Into The Database
-
-const createBlogIntoDB = async (payload: Partial<TBlog>, userEmail: string) => {
-  const user = await User.findOne({ email: userEmail }).select('_id');
-  if (!user) {
-    throw new AppError(
-      httpStatus.NOT_FOUND,
-      'you are an authorised to create blog !',
-    );
-  }
-  payload.author = user._id;
-  const result = (await Blog.create(payload)).populate('author');
-  return result;
+const getAllBlogs = async (query: Record<string, unknown>) => {
+  const blogQuery = new QueryBuilder(
+    Blog.find().populate('author', 'name email'),
+    query,
+  )
+    .search(blogsSearchableFields)
+    .authorFiltering()
+    .filter()
+    .sortBy()
+    .sortOrder();
+  const blogs = await blogQuery.modelQuery;
+  return blogs;
 };
 
-//Update Blog Into The Database
+const createBlogIntoDB = async (payload: IBlog, token: string) => {
+  const decoded = jwt.verify(
+    token,
+    config.jwt_access_secret as string,
+  ) as JwtPayload;
 
-const updateSingleBlogIntoDB = async (
-  payload: Partial<TBlog>,
+  const { userId } = decoded;
+
+  const blogData = {
+    ...payload,
+    author: userId,
+  };
+
+  const newBlog = (await Blog.create(blogData)).populate(
+    'author',
+    'name email',
+  );
+  if (!newBlog) {
+    throw new AppError(httpStatus.BAD_REQUEST, 'Failed to create Blog');
+  }
+  return newBlog;
+};
+
+const updateBlog = async (
   id: string,
-  userEmail: string,
+  payload: Partial<IBlog>,
+  token: string,
 ) => {
-  if (!id) {
-    throw new Error(`Pleace Enter id`);
+  const decoded = jwt.verify(
+    token,
+    config.jwt_access_secret as string,
+  ) as JwtPayload;
+  const { userId } = decoded;
+  const blog = await Blog.findById(id);
+  if (!blog) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Blog not found');
   }
-  const isSameUser = await Blog.isOwnUser(userEmail, id);
-
-  if (!isSameUser) {
-    throw new AppError(httpStatus.UNAUTHORIZED, 'Your Are Not Authorize User');
-  }
-
-  const result = await Blog.findByIdAndUpdate(id, payload, {
-    new: true,
-  }).populate('author');
-
-  return result;
-};
-
-//Delete Blog By User Into The Database
-
-const deleteSingleBlogIntoDB = async (id: string, userEmail: string) => {
-  if (!id) {
-    throw new Error(`Pleace Enter id`);
-  }
-
-  const isSameUser = await Blog.isOwnUser(userEmail, id);
-
-  if (!isSameUser) {
-    throw new AppError(httpStatus.UNAUTHORIZED, 'Your Are Not Authorize User');
-  }
-
-  const result = await Blog.findByIdAndDelete(id);
-
-  return result;
-};
-
-//Get All Blog From Databse
-
-const getAllBlogFromDB = async (query: Record<string, unknown>) => {
-  const Blogquery = new QueryBuilder(Blog.find().populate('author'), query)
-    .search(['title', 'content'])
-    .sort();
-
-  let result = await Blogquery.modelQuery;
-
-  if (query?.filter) {
-    result = result.filter((item) =>
-      item.author._id.equals(
-        new mongoose.Types.ObjectId(query?.filter as string),
-      ),
+  if (blog.author.toString() !== userId) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You are not authorized to update this blog',
     );
   }
+  const updatedBlog = await Blog.findByIdAndUpdate(id, payload, {
+    new: true,
+  }).populate('author', 'name email');
+  return updatedBlog;
+};
 
-  return result;
+const deleteBlog = async (id: string, token: string) => {
+  const decoded = jwt.verify(
+    token,
+    config.jwt_access_secret as string,
+  ) as JwtPayload;
+  const { userId } = decoded;
+  const blog = await Blog.findById(id);
+  if (!blog) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Blog not found');
+  }
+  if (blog.author.toString() !== userId) {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You are not authorized to delete this blog',
+    );
+  }
+  const deletedBlog = await Blog.findByIdAndDelete(id);
+  return deletedBlog;
+};
+const deleteBlogByAdmin = async (id: string, token: string) => {
+  const decoded = jwt.verify(
+    token,
+    config.jwt_access_secret as string,
+  ) as JwtPayload;
+  const { role } = decoded;
+  const blog = await Blog.findById(id);
+  if (!blog) {
+    throw new AppError(httpStatus.NOT_FOUND, 'Blog not found');
+  }
+  if (role !== 'admin') {
+    throw new AppError(
+      httpStatus.FORBIDDEN,
+      'You are not authorized to delete this blog',
+    );
+  }
+  await Blog.findByIdAndDelete(id);
 };
 
 export const BlogServices = {
+  getAllBlogs,
   createBlogIntoDB,
-  updateSingleBlogIntoDB,
-  deleteSingleBlogIntoDB,
-  getAllBlogFromDB,
+  updateBlog,
+  deleteBlog,
+  deleteBlogByAdmin,
 };

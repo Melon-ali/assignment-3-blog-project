@@ -1,1 +1,1 @@
-export const BlogHiddenfelds = ['createdAt', 'updatedAt', '__v', 'isPublished'];
+export const blogsSearchableFields = ['title', 'content'];

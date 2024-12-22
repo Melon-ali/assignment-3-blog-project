@@ -2,26 +2,22 @@ import httpStatus from 'http-status';
 import catchAsync from '../../utils/catchAsync';
 import sendResponse from '../../utils/sendResponse';
 import { AuthServices } from './auth.service';
-import config from '../../config';
-
-//Login With Email and Password
 
 const loginUser = catchAsync(async (req, res) => {
   const result = await AuthServices.loginUser(req.body);
-  res.cookie('accesstoken', result, {
-    secure: config.NODE_ENV === 'production',
-    httpOnly: true,
-  });
+  const { accessToken } = result;
+
   sendResponse(res, {
     statusCode: httpStatus.OK,
     success: true,
-    message: 'Login Successful',
+    message: 'Login successful',
     data: {
-      token: result,
+      token:accessToken,
     },
   });
 });
 
-export const AuthController = {
+
+export const AuthControllers = {
   loginUser,
 };

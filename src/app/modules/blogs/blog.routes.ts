@@ -1,40 +1,40 @@
 import express from 'express';
-import { BlogValidtions } from './blog.validation';
-import { BlogController } from './blog.controller';
-import auth from '../../middlwares/auth';
 import validateRequest from '../../middlwares/validateRequest';
+import { BlogValidation } from './blog.validation';
+import { BlogControllers } from './blog.controller';
+import { USER_ROLE } from '../users/user.constant';
+import auth from '../../middlwares/auth';
+
 const router = express.Router();
 
-//Create Blog
+// Create Blog
 
 router.post(
   '/',
-  auth('user'),
-  validateRequest(BlogValidtions.blogValidationSchema),
-  BlogController.createBlog,
+  auth(USER_ROLE.user),
+  validateRequest(BlogValidation.createBlogValidationSchema),
+  BlogControllers.createBlog,
 );
 
-//Update Blog by User
+// Update Blog
 
 router.patch(
   '/:id',
-  auth('user'),
-  validateRequest(BlogValidtions.IdValidationSchema),
-  validateRequest(BlogValidtions.blogUpdateValidationSchema),
-  BlogController.updateSingleBlog,
+  auth(USER_ROLE.user),
+  validateRequest(BlogValidation.updateBlogValidationSchema),
+  BlogControllers.updateBlog,
 );
 
-//Get Blog by User
+// Delete Blog
 
 router.delete(
   '/:id',
-  auth('user'),
-  validateRequest(BlogValidtions.IdValidationSchema),
-  BlogController.deleteSingleBlog,
+  auth(USER_ROLE.user),
+  BlogControllers.deleteBlog,
 );
 
-//Get All Blog it is public api
+// Get All Blogs
 
-router.get('/', BlogController.getAllBlog);
+router.get('/', BlogControllers.getAllBlogs);
 
 export const BlogRoutes = router;

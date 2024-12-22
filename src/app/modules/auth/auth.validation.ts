@@ -1,19 +1,15 @@
 import { z } from 'zod';
 
-// Define Zod Validation
-
 const loginValidationSchema = z.object({
   body: z.object({
     email: z
-      .string()
-      .email('Please Provide a Valid Email Address.')
-      .min(1, { message: 'The Email is required' }),
-
-    password: z
-      .string()
-      .min(6, { message: 'Password Must be at Least 6 Characters Long.' }),
+      .string({ required_error: 'Id is Required.' })
+      .email({ message: 'Invalid Email Address' }),
+    password: z.string({ required_error: 'Password is Required' }),
   }),
 });
+
+
 
 export const AuthValidation = {
   loginValidationSchema,
