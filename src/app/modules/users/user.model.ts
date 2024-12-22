@@ -1,40 +1,29 @@
-import { model, Schema } from 'mongoose';
-import { TUser, UserModel } from './user.interface';
 import bcrypt from 'bcrypt';
-import { emailValidationRegex, roletype } from './user.constant';
+import { Schema, model } from 'mongoose';
 import config from '../../config';
-
-//create useshema
+import { TUser, UserModel } from './user.interface';
 const userSchema = new Schema<TUser, UserModel>(
   {
     name: {
       type: String,
-      required: [true, 'The Name Field is Required.'],
-      trim: true,
+      required: true,
     },
     email: {
       type: String,
-      required: [true, 'The Email Field is Required.'],
+      required: true,
       unique: true,
-      validate: {
-        validator: function (value: string) {
-          return emailValidationRegex.test(value);
-        },
-        message: 'Please Provide a Valid Email Address.',
-      },
     },
     password: {
       type: String,
-      required: [true, 'The Password Field is Required.'],
-      minlength: [6, 'Password Must Be at Least 6 Characters long.'],
-      select: false,
+      required: true,
+      select: 0,
+    },
+    passwordChangedAt: {
+      type: Date,
     },
     role: {
       type: String,
-      enum: {
-        values: roletype,
-        message: "Role Must Be Rather 'admin' or 'user'.",
-      },
+      enum: ['admin', 'user'],
       default: 'user',
     },
     isBlocked: {
@@ -44,32 +33,38 @@ const userSchema = new Schema<TUser, UserModel>(
   },
   {
     timestamps: true,
-  }
+  },
 );
 
-//Plant Passworld convert to has Passworld
-userSchema.pre('save', async function () {
-  this.password = await bcrypt.hash(
-    this.password,
-    Number(config.bcrypt_salt_rounds)
+userSchema.pre('save', async function (next) {
+  const user = this; // doc
+
+  // Hashing Password and Save Into DB
+
+  user.password = await bcrypt.hash(
+    user.password,
+    Number(config.bcrypt_salt_rounds),
   );
+  next();
 });
 
-//Instance Methods for Checking if Passwords are Matched
+// Set '' After Saving Password
+
+userSchema.post('save', function (doc, next) {
+  doc.password = '';
+  next();
+});
+
+userSchema.statics.isUserExistsByEmail = async function (email: string) {
+  return await User.findOne({ email }).select('+password');
+};
 
 userSchema.statics.isPasswordMatched = async function (
   plainTextPassword,
-  hashedPassword
+  hashedPassword,
 ) {
   return await bcrypt.compare(plainTextPassword, hashedPassword);
 };
 
-//Instance Methods for Checking if The User Exist
-userSchema.statics.isUserExistsByEmail = async function (email) {
-  return await User.findOne({ email }).select('+password');
-};
 
-//Create User Model
-const User = model<TUser, UserModel>('User', userSchema);
-
-export default User;
+export const User = model<TUser, UserModel>('User', userSchema);

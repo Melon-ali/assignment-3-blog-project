@@ -1,23 +1,23 @@
-import { Model } from 'mongoose';
+import { Model, Types } from 'mongoose';
 import { USER_ROLE } from './user.constant';
 
-//Create User Interface
 export type TUser = {
+  _id: Types.ObjectId;
   name: string;
   email: string;
   password: string;
+  passwordChangedAt?: Date;
   role: 'admin' | 'user';
   isBlocked: boolean;
 };
 
 export interface UserModel extends Model<TUser> {
-  //Instance Methods For Checking if The User Exist
   isUserExistsByEmail(email: string): Promise<TUser>;
-  //instance methods for checking if passwords are matched
+  //Instance Methods for Checking if Passwords are Matched
   isPasswordMatched(
     plainTextPassword: string,
     hashedPassword: string,
   ): Promise<boolean>;
 }
 
-export type TUserRole = keyof typeof USER_ROLE;
+export type IUserRole = keyof typeof USER_ROLE;
