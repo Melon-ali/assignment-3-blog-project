@@ -1,7 +1,7 @@
 import sendResponse from '../../utils/sendResponse';
 import catchAsync from '../../utils/catchAsync';
-import httpStatus from 'http-status';
 import { BlogServices } from './blog.service';
+import { StatusCodes } from 'http-status-codes';
 
 const getAllBlogs = catchAsync(async (req, res) => {
   const result = await BlogServices.getAllBlogs(req.query);
@@ -12,7 +12,7 @@ const getAllBlogs = catchAsync(async (req, res) => {
     author: blog.author,
   }));
   sendResponse(res, {
-    statusCode: httpStatus.OK,
+    statusCode: StatusCodes.OK,
     success: true,
     message: 'Blogs fetched successfully',
     data: resultToSend,
@@ -20,31 +20,24 @@ const getAllBlogs = catchAsync(async (req, res) => {
 });
 
 const createBlog = catchAsync(async (req, res) => {
-  let token = req.headers.authorization;
-  token = token?.includes('Bearer') ? token?.replace(/^Bearer\s+/, '') : token;
+  const user = req.user;
   const blogData = req.body;
-  const result = await BlogServices.createBlogIntoDB(blogData, token as string);
-  const resultToSend = {
-    _id: result._id,
-    title: result.title,
-    content: result.content,
-    author: result.author,
-  };
+  const result = await BlogServices.createBlogIntoDB(blogData, user);
 
   sendResponse(res, {
-    statusCode: httpStatus.CREATED,
+    statusCode: StatusCodes.OK,
     success: true,
-    message: 'Blog created successfully',
-    data: resultToSend,
+    message: 'Blog  Create successfully',
+    data: result,
   });
 });
 
 const updateBlog = catchAsync(async (req, res) => {
   const id = req.params.id;
-  let token = req.headers.authorization;
-  token = token?.includes('Bearer') ? token?.replace(/^Bearer\s+/, '') : token;
+  const user = req.user;
+
   const blogData = req.body;
-  const result = await BlogServices.updateBlog(id, blogData, token as string);
+  const result = await BlogServices.updateBlog(id, blogData, user);
   const resultToSend = {
     _id: result?._id,
     title: result?.title,
@@ -52,7 +45,7 @@ const updateBlog = catchAsync(async (req, res) => {
     author: result?.author,
   };
   sendResponse(res, {
-    statusCode: httpStatus.OK,
+    statusCode: StatusCodes.OK,
     success: true,
     message: 'Blog updated successfully',
     data: resultToSend,
@@ -61,27 +54,26 @@ const updateBlog = catchAsync(async (req, res) => {
 
 const deleteBlog = catchAsync(async (req, res) => {
   const id = req.params.id;
-  let token = req.headers.authorization;
-  token = token?.includes('Bearer') ? token?.replace(/^Bearer\s+/, '') : token;
-  await BlogServices.deleteBlog(id, token as string);
+  const user = req.user;
+  
+  await BlogServices.deleteBlog(id, user);
   sendResponse(res, {
-      statusCode: httpStatus.OK,
-      success: true,
-      message: 'Blog deleted successfully',
-      data: null
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: 'Blog deleted successfully',
+    data: null,
   });
 });
 
 const deleteBlogByAdmin = catchAsync(async (req, res) => {
   const id = req.params.id;
-  let token = req.headers.authorization;
-  token = token?.includes('Bearer') ? token?.replace(/^Bearer\s+/, '') : token;
-  await BlogServices.deleteBlogByAdmin(id, token as string);
+  const user = req.user;
+  await BlogServices.deleteBlogByAdmin(id, user);
   sendResponse(res, {
-      statusCode: httpStatus.OK,
-      success: true,
-      message: 'Blog Deleted Successfully',
-      data: null
+    statusCode: StatusCodes.OK,
+    success: true,
+    message: 'Blog Deleted Successfully',
+    data: null,
   });
 });
 

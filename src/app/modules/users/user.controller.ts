@@ -1,7 +1,8 @@
 import sendResponse from '../../utils/sendResponse';
 import catchAsync from '../../utils/catchAsync';
 import { UserServices } from './user.service';
-import httpStatus from 'http-status';
+import { StatusCodes } from 'http-status-codes';
+
 
 const createUser = catchAsync(async (req, res) => {
   const userData = req.body;
@@ -13,7 +14,7 @@ const createUser = catchAsync(async (req, res) => {
   };
 
   sendResponse(res, {
-    statusCode: httpStatus.CREATED,
+    statusCode: StatusCodes.CREATED,
     success: true,
     message: 'User registered successfully',
     data: resultToSend,
@@ -24,11 +25,11 @@ const createUser = catchAsync(async (req, res) => {
 
 const blockUser = catchAsync(async (req, res) => {
   const id = req.params.id;
-  let token = req.headers.authorization;
-  token = token?.includes('Bearer') ? token?.replace(/^Bearer\s+/, '') : token;
-  await UserServices.blockUser(id, token as string);
+  const userData = req.body;
+  const user = req.user;
+  await UserServices.blockUser(id, user, userData);
   sendResponse(res, {
-    statusCode: httpStatus.OK,
+    statusCode: StatusCodes.OK,
     success: true,
     message: 'User blocked successfully',
     data: null,

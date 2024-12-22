@@ -1,55 +1,54 @@
 import { NextFunction, Request, Response } from 'express';
-import httpStatus from 'http-status';
 import jwt, { JwtPayload } from 'jsonwebtoken';
 import AppError from '../errors/AppError';
 import { IUserRole } from '../modules/users/user.interface';
-import { User } from '../modules/users/user.model';
 import catchAsync from '../utils/catchAsync';
 import config from '../config';
+import { StatusCodes } from 'http-status-codes';
+import { User } from '../modules/users/user.model';
 
 const auth = (...requiredRoles: IUserRole[]) => {
   return catchAsync(async (req: Request, res: Response, next: NextFunction) => {
-    let token = req.headers.authorization;
-
-    token = token?.includes('Bearer')
-      ? token?.replace(/^Bearer\s+/, '')
-      : token;
-
-    // Checking if The Token is Missing
+    const token = req?.headers?.authorization?.split(' ')[1];
 
     if (!token) {
-      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
+      throw new AppError(StatusCodes.UNAUTHORIZED, 'You are not authorized!');
     }
 
-    // Checking if The Given Token is valid
+    let decoded: JwtPayload | null = null;
 
-    const decoded = jwt.verify(
-      token,
-      config.jwt_access_secret as string,
-    ) as JwtPayload;
+    try {
+      decoded = jwt.verify(
+        token,
+        config.jwt_access_secret as string,
+      ) as JwtPayload;
+    } catch (err) {
+      throw new AppError(StatusCodes.UNAUTHORIZED, 'Invalid or expired token!');
+    }
 
-    const { role, email } = decoded;
+    const { userId } = decoded;
+    console.log(decoded);
 
-    // Checking if The User is Exist
-
-    const user = await User.isUserExistsByEmail(email);
-
+    const user = await User.findById(userId);
     if (!user) {
-      throw new AppError(httpStatus.NOT_FOUND, 'This User is Not Found !');
+      throw new AppError(StatusCodes.NOT_FOUND, 'User Not Found!');
     }
 
-    // Checking if The User is Blocked
-    const userStatus = user?.isBlocked;
+    const isBlocked = user?.isBlocked;
 
-    if (userStatus) {
-      throw new AppError(httpStatus.FORBIDDEN, 'This user is blocked ! !');
+    if (isBlocked) {
+      throw new AppError(StatusCodes.FORBIDDEN, 'Your Account is Blocked!');
     }
 
-    if (requiredRoles && !requiredRoles.includes(role)) {
-      throw new AppError(httpStatus.UNAUTHORIZED, 'You are not authorized!');
+    req.user = decoded;
+
+    if (requiredRoles.length && !requiredRoles.includes(decoded.role)) {
+      throw new AppError(
+        StatusCodes.FORBIDDEN,
+        'You do not have the required permissions!',
+      );
     }
 
-    req.user = decoded as JwtPayload;
     next();
   });
 };

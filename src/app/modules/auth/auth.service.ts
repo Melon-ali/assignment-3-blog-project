@@ -1,4 +1,5 @@
-import httpStatus from 'http-status';
+
+import { StatusCodes } from 'http-status-codes';
 import config from '../../config';
 import AppError from '../../errors/AppError';
 import { User } from '../users/user.model';
@@ -11,7 +12,7 @@ const loginUser = async (payload: TLogin) => {
   const user = await User.isUserExistsByEmail(payload.email);
 
   if (!user) {
-    throw new AppError(httpStatus.NOT_FOUND, 'This user is not found !');
+    throw new AppError(StatusCodes.NOT_FOUND, 'This user is not found !');
   }
 
   // Checking if The User is Blocked
@@ -19,7 +20,7 @@ const loginUser = async (payload: TLogin) => {
   const userStatus = user?.isBlocked;
 
   if (userStatus) {
-    throw new AppError(httpStatus.FORBIDDEN, 'This user is blocked !');
+    throw new AppError(StatusCodes.FORBIDDEN, 'This user is blocked !');
   }
 
   //Checking if The Password is Correct
@@ -30,7 +31,7 @@ const loginUser = async (payload: TLogin) => {
   );
 
   if (!checkPassword) {
-    throw new AppError(httpStatus.UNAUTHORIZED, 'Invalid credentials');
+    throw new AppError(StatusCodes.UNAUTHORIZED, 'Invalid credentials');
   }
 
   //Create Token and Sent to The  Client
